@@ -95,9 +95,10 @@
   </div>
 
   <script>
-    const apiUrl = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
-      ? 'http://127.0.0.1:5000/api/data' // Local Flask URL
-      : 'https://thingspeak-backend.onrender.com/api/data'; // Production URL
+    // Replace with your ThingSpeak channel details
+    const CHANNEL_ID = '2983435'; // Your ThingSpeak channel ID
+    const API_KEY = '1MT14J6BGB42VCPD'; // Your ThingSpeak API key
+    const apiUrl = `https://api.thingspeak.com/channels/${CHANNEL_ID}/feeds.json?api_key=${API_KEY}&results=1`;
 
     function fetchData() {
       fetch(apiUrl)
