@@ -1,25 +1,139 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ThingSpeak Data Viewer</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #00bcd4, #4caf50);
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+
+    .container {
+      background: #fff;
+      color: #333;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 600px;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 2em;
+      margin-bottom: 20px;
+      color: #333;
+    }
+
+    .field {
+      font-size: 1.5em;
+      margin-bottom: 20px;
+      padding: 15px;
+      background-color: #f1f1f1;
+      border-radius: 10px;
+    }
+
+    .field p {
+      margin: 10px 0;
+      font-weight: bold;
+    }
+
+    .steps {
+      background-color: #6a11cb;
+      color: #fff;
+    }
+
+    .voltage {
+      background-color: #ff9800;
+      color: #fff;
+    }
+
+    .footer {
+      margin-top: 30px;
+      font-size: 0.85em;
+      color: #aaa;
+    }
+
+    .loading {
+      font-size: 1.2em;
+      color: #fff;
+      text-align: center;
+    }
+
+    .error {
+      color: red;
+      font-size: 1.2em;
+      margin-top: 20px;
+    }
+  </style>
 </head>
 <body>
-  <h1>Live Sensor Data</h1>
-  <div id="data">Loading...</div>
+  <div class="container">
+    <h1>Live Sensor Data</h1>
+    
+    <div class="loading" id="loading">Loading...</div>
+    
+    <div class="field steps" id="steps">
+      <p>Steps: <span id="steps-value">0</span></p>
+    </div>
+
+    <div class="field voltage" id="voltage">
+      <p>Voltage: <span id="voltage-value">0.00 V</span></p>
+    </div>
+
+    <div class="error" id="error" style="display:none;">Failed to load data from ThingSpeak.</div>
+
+    <div class="footer">Powered by ThingSpeak API</div>
+  </div>
 
   <script>
-    fetch('https://thingspeak-backend.onrender.com/api/data')
-      .then(response => response.json())
-      .then(data => {
-        const feeds = data.feeds;
-        const output = feeds.map(f => `<p><strong>${f.created_at}</strong>: ${f.field1}</p>`).join('');
-        document.getElementById('data').innerHTML = output;
-      })
-      .catch(error => {
-        document.getElementById('data').innerHTML = 'Failed to load data.';
-        console.error(error);
-      });
+    const apiUrl = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
+      ? 'http://127.0.0.1:5000/api/data' // Local Flask URL
+      : 'https://thingspeak-backend.onrender.com/api/data'; // Production URL
+
+    function fetchData() {
+      fetch(apiUrl)
+        .then(response => response.json())
+        .then(data => {
+          if (data.feeds && data.feeds.length > 0) {
+            const feed = data.feeds[0]; // Get the first feed
+
+            // Extract Steps and Voltage from the API response
+            const steps = feed.field1 || 0;
+            const voltage = feed.field2 || 0;
+
+            // Update the values on the frontend
+            document.getElementById('steps-value').textContent = steps;
+            document.getElementById('voltage-value').textContent = voltage.toFixed(2) + " V";
+
+            // Hide loading text
+            document.getElementById('loading').style.display = 'none';
+          } else {
+            showError();
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          showError();
+        });
+    }
+
+    function showError() {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('error').style.display = 'block';
+    }
+
+    // Fetch data immediately and set interval to update every 10 seconds
+    fetchData();
+    setInterval(fetchData, 10000); // Update every 10 seconds
   </script>
 </body>
 </html>
