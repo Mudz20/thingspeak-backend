@@ -1,5 +1,4 @@
 Flask==2.2.2          # Flask 2.x (latest stable)
 requests==2.28.1      # Requests library to fetch data from ThingSpeak
-flask-cors==3.1.1     # Latest stable version of flask-cors
-Werkzeug==2.1.0       # Compatible version of Werkzeug for Flask 2.x
-
+flask-cors==3.0.10    # Compatible flask-cors version for Flask 2.x
+Werkzeug==2.0.3       # Compatible version of Werkzeug for Flask 2.x
