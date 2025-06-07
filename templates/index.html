@@ -1,1 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>ThingSpeak Data Viewer</title>
+</head>
+<body>
+  <h1>Live Sensor Data</h1>
+  <div id="data">Loading...</div>
 
+  <script>
+    fetch('https://thingspeak-backend.onrender.com/api/data')
+      .then(response => response.json())
+      .then(data => {
+        const feeds = data.feeds;
+        const output = feeds.map(f => `<p><strong>${f.created_at}</strong>: ${f.field1}</p>`).join('');
+        document.getElementById('data').innerHTML = output;
+      })
+      .catch(error => {
+        document.getElementById('data').innerHTML = 'Failed to load data.';
+        console.error(error);
+      });
+  </script>
+</body>
+</html>
