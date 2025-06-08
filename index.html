@@ -83,13 +83,15 @@
     <button onclick="resetSteps()">🔁 Reset</button>
     <button onclick="downloadCSV()">📥 Download CSV</button>
 
-    <div class="footer">Live Data from ESP32</div>
+    <div class="footer">Powered by ThingSpeak API</div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
-    let steps = 0;
-    let voltage = 0.00;
+    const CHANNEL_ID = '2983435';
+    const API_KEY = '1MT14J6BGB42VCPD';
+    const apiUrl = `https://api.thingspeak.com/channels/${CHANNEL_ID}/feeds.json?api_key=${API_KEY}&results=1`;
+
     const labels = [];
     const data = {
       labels: labels,
@@ -115,29 +117,37 @@
     const logs = [];
 
     function fetchData() {
-      fetch('/data')
+      fetch(apiUrl)
         .then(res => res.json())
         .then(json => {
-          steps = json.steps;
-          voltage = json.voltage;
-          document.getElementById('steps').textContent = steps;
-          document.getElementById('voltage').textContent = voltage.toFixed(2) + " V";
+          if (json.feeds && json.feeds.length > 0) {
+            const feed = json.feeds[0];
+            const steps = feed.field1 || 0;
+            const voltage = parseFloat(feed.field2 || 0);
 
-          const now = new Date().toLocaleTimeString();
-          labels.push(now);
-          data.datasets[0].data.push(voltage);
-          logs.push({ time: now, steps: steps, voltage: voltage });
+            document.getElementById('steps').textContent = steps;
+            document.getElementById('voltage').textContent = voltage.toFixed(2) + " V";
 
-          if (labels.length > 20) {
-            labels.shift();
-            data.datasets[0].data.shift();
+            const now = new Date().toLocaleTimeString();
+            labels.push(now);
+            data.datasets[0].data.push(voltage);
+            logs.push({ time: now, steps: steps, voltage: voltage });
+
+            if (labels.length > 20) {
+              labels.shift();
+              data.datasets[0].data.shift();
+            }
+
+            myChart.update();
           }
-          myChart.update();
+        })
+        .catch(err => {
+          console.error("Error fetching data from ThingSpeak:", err);
         });
     }
 
     function resetSteps() {
-      fetch('/reset');
+      alert("Reset function not available via ThingSpeak. Implement this only if using a local server.");
     }
 
     function downloadCSV() {
@@ -154,7 +164,8 @@
       URL.revokeObjectURL(url);
     }
 
-    setInterval(fetchData, 1000);
+    setInterval(fetchData, 5000); // fetch every 5 seconds
+    fetchData(); // initial fetch
   </script>
 </body>
 </html>
