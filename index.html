@@ -2,140 +2,159 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ThingSpeak Data Viewer</title>
+  <title>Step Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: linear-gradient(135deg, #00bcd4, #4caf50);
-      color: #fff;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
+    * {
+      box-sizing: border-box;
+      font-family: 'Segoe UI', sans-serif;
       margin: 0;
+      padding: 0;
     }
-
-    
+    body {
+      background: linear-gradient(135deg, #6a11cb, #2575fc);
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
     .container {
       background: #fff;
       color: #333;
+      border-radius: 20px;
       padding: 30px;
-      border-radius: 10px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      max-width: 400px;
       width: 100%;
-      max-width: 600px;
+      box-shadow: 0 15px 30px rgba(0,0,0,0.2);
       text-align: center;
     }
-
-    h1 {
-      font-size: 2em;
-      margin-bottom: 20px;
-      color: #333;
+    h2 {
+      margin-bottom: 15px;
+      color: #2575fc;
     }
-
-    .field {
-      font-size: 1.5em;
-      margin-bottom: 20px;
-      padding: 15px;
-      background-color: #f1f1f1;
-      border-radius: 10px;
-    }
-
-    .field p {
+    .value {
+      font-size: 2.8em;
       margin: 10px 0;
       font-weight: bold;
+      color: #6a11cb;
     }
-
-    .steps {
+    .label {
+      font-size: 1.2em;
+      color: #666;
+    }
+    button {
+      margin-top: 20px;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 10px;
+      background-color: #2575fc;
+      color: white;
+      font-size: 1em;
+      cursor: pointer;
+      transition: 0.3s ease;
+    }
+    button:hover {
       background-color: #6a11cb;
-      color: #fff;
     }
-
-    .voltage {
-      background-color: #ff9800;
-      color: #fff;
+    canvas {
+      margin-top: 30px;
+      max-width: 100%;
     }
-
     .footer {
       margin-top: 30px;
       font-size: 0.85em;
       color: #aaa;
     }
-
-    .loading {
-      font-size: 1.2em;
-      color: #fff;
-      text-align: center;
-    }
-
-    .error {
-      color: red;
-      font-size: 1.2em;
-      margin-top: 20px;
-    }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Live Sensor Data</h1>
-    
-    <div class="loading" id="loading">Loading...</div>
-    
-    <div class="field steps" id="steps">
-      <p>Steps: <span id="steps-value">0</span></p>
-    </div>
+    <h2>Step Monitor</h2>
+    <div class="label">Steps</div>
+    <div id="steps" class="value">0</div>
 
-    <div class="field voltage" id="voltage">
-      <p>Voltage: <span id="voltage-value">0.00 V</span></p>
-    </div>
+    <div class="label">Voltage</div>
+    <div id="voltage" class="value">0.00 V</div>
 
-    <div class="error" id="error" style="display:none;">DASHBOARD</div>
+    <canvas id="chart" height="180"></canvas>
 
-    <div class="footer">Powered by ThingSpeak API</div>
+    <button onclick="resetSteps()">🔁 Reset</button>
+    <button onclick="downloadCSV()">📥 Download CSV</button>
+
+    <div class="footer">Live Data from ESP32</div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
-    // Replace with your ThingSpeak channel details
-    const CHANNEL_ID = '2983435'; // Your ThingSpeak channel ID
-    const API_KEY = '1MT14J6BGB42VCPD'; // Your ThingSpeak API key
-    const apiUrl = `https://api.thingspeak.com/channels/${CHANNEL_ID}/feeds.json?api_key=${API_KEY}&results=1`;
+    let steps = 0;
+    let voltage = 0.00;
+    const labels = [];
+    const data = {
+      labels: labels,
+      datasets: [{
+        label: 'Voltage (V)',
+        data: [],
+        fill: false,
+        borderColor: '#6a11cb',
+        tension: 0.3
+      }]
+    };
+    const config = {
+      type: 'line',
+      data: data,
+      options: {
+        scales: {
+          y: { beginAtZero: true, max: 3.5 }
+        }
+      }
+    };
+    const myChart = new Chart(document.getElementById('chart'), config);
+
+    const logs = [];
 
     function fetchData() {
-      fetch(apiUrl)
-        .then(response => response.json())
-        .then(data => {
-          if (data.feeds && data.feeds.length > 0) {
-            const feed = data.feeds[0]; // Get the first feed
+      fetch('/data')
+        .then(res => res.json())
+        .then(json => {
+          steps = json.steps;
+          voltage = json.voltage;
+          document.getElementById('steps').textContent = steps;
+          document.getElementById('voltage').textContent = voltage.toFixed(2) + " V";
 
-            // Extract Steps and Voltage from the API response
-            const steps = feed.field1 || 0;
-            const voltage = feed.field2 || 0;
+          const now = new Date().toLocaleTimeString();
+          labels.push(now);
+          data.datasets[0].data.push(voltage);
+          logs.push({ time: now, steps: steps, voltage: voltage });
 
-            // Update the values on the frontend
-            document.getElementById('steps-value').textContent = steps;
-            document.getElementById('voltage-value').textContent = voltage.toFixed(2) + " V";
-
-            // Hide loading text
-            document.getElementById('loading').style.display = 'none';
-          } else {
-            showError();
+          if (labels.length > 20) {
+            labels.shift();
+            data.datasets[0].data.shift();
           }
-        })
-        .catch(error => {
-          console.error('Error:', error);
-          showError();
+          myChart.update();
         });
     }
 
-    function showError() {
-      document.getElementById('loading').style.display = 'none';
-      document.getElementById('error').style.display = 'block';
+    function resetSteps() {
+      fetch('/reset');
     }
 
-    // Fetch data immediately and set interval to update every 10 seconds
-    fetchData();
-    setInterval(fetchData, 10000); // Update every 10 seconds
+    function downloadCSV() {
+      let csv = "Timestamp,Steps,Voltage\n";
+      logs.forEach(row => {
+        csv += `${row.time},${row.steps},${row.voltage.toFixed(2)}\n`;
+      });
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "step_log.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    setInterval(fetchData, 1000);
   </script>
 </body>
 </html>
